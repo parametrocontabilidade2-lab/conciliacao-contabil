@@ -86,7 +86,7 @@ async function generate(){try{$('msg').textContent='Lendo arquivos...';let ext,f
  }catch(e){console.error(e);$('msg').textContent='Erro: '+e.message;alert('Não foi possível gerar a conciliação.\n\n'+e.message)}}
 function render(){let q=$('search').value.toLowerCase();let rows=resultRows.filter(r=>Object.values(r).some(v=>String(v).toLowerCase().includes(q)));$('tbody').innerHTML=rows.slice(0,5000).map(r=>`<tr><td>${r.date}</td><td>${esc(r.hist)}</td><td>R$ ${money(r.credit)}</td><td>${esc(r.note)}</td><td>R$ ${money(r.finance)}</td><td>R$ ${money(r.domain)}</td><td class="${r.status==='OK'?'ok':'div'}">${esc(r.status)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">Nenhum resultado.</td></tr>';let ok=resultRows.filter(r=>r.status==='OK').length;let div=resultRows.length-ok;let set=new Set(resultRows.map(r=>r.note));$('sTotal').textContent=resultRows.length.toLocaleString('pt-BR');$('sOk').textContent=ok.toLocaleString('pt-BR');$('sDiv').textContent=div.toLocaleString('pt-BR');$('sNf').textContent=set.size.toLocaleString('pt-BR')}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-$('search').oninput=render;$('generate').onclick=generate;
+$('search').oninput=render;$('generate').onclick=generate;$('download').onclick=downloadXlsx;
 
 // Escrita XLSX mínima (ZIP sem compressão), suficiente para abrir no Excel/LibreOffice.
 function crc32(bytes){let c=~0;for(let b of bytes){c^=b;for(let k=0;k<8;k++)c=(c>>>1)^((c&1)?0xEDB88320:0)}return (~c)>>>0}
