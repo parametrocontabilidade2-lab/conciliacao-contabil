@@ -47,6 +47,7 @@
   </div>
   <div class="footer">Os arquivos são processados no navegador. Esta primeira versão não envia os dados para um servidor.</div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // Leitor XLSX mínimo e independente: lê as planilhas XML dentro do ZIP do Excel.
 const $=id=>document.getElementById(id); let resultRows=[], lastName='Conciliacao';
@@ -101,6 +102,59 @@ function relXml(){return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?
 function wbRelXml(){return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'}
 function typesXml(){return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'}
 
-function downloadXlsx(){if(!resultRows.length)return;let rows=[['DATA','HISTORICO EXTRATO','VALOR EXTRATO','NOTA','VALOR NO FINANCEIRO (DIA)','VALOR TOTAL NF (DOMINIO)','STATUS'],...resultRows.map(r=>[r.date,r.hist,r.credit,r.note,r.finance,r.domain,r.status])];let data=zipStore([{name:'[Content_Types].xml',data:typesXml()},{name:'_rels/.rels',data:relXml()},{name:'xl/workbook.xml',data:workbookXml()},{name:'xl/_rels/workbook.xml.rels',data:wbRelXml()},{name:'xl/worksheets/sheet1.xml',data:sheetXml(rows)}]);let blob=new Blob([data],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=lastName||'CONCILIACAO.xlsx';a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},1500);$('msg').textContent='Excel gerado. Se o download não iniciar, verifique a barra de downloads do Chrome.'} 
+function downloadXlsx(){
+  if(!resultRows.length)return;
+
+  if(typeof XLSX === 'undefined'){
+    $('msg').textContent='Erro: biblioteca de geração do Excel não foi carregada.';
+    return;
+  }
+
+  const rows=[
+    [
+      'DATA',
+      'HISTORICO EXTRATO',
+      'VALOR EXTRATO',
+      'NOTA',
+      'VALOR NO FINANCEIRO (DIA)',
+      'VALOR TOTAL NF (DOMINIO)',
+      'STATUS'
+    ],
+    ...resultRows.map(r=>[
+      r.date,
+      r.hist,
+      r.credit,
+      r.note,
+      r.finance,
+      r.domain,
+      r.status
+    ])
+  ];
+
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+
+  ws['!cols']=[
+    {wch:12},
+    {wch:60},
+    {wch:18},
+    {wch:15},
+    {wch:25},
+    {wch:25},
+    {wch:25}
+  ];
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'CONCILIACAO');
+
+  let nome=lastName||'CONCILIACAO.xlsx';
+
+  if(!nome.toLowerCase().endsWith('.xlsx')){
+    nome+='.xlsx';
+  }
+
+  XLSX.writeFile(wb,nome);
+
+  $('msg').textContent='Excel gerado com sucesso.';
+} 
 </script>
 </body></html>
