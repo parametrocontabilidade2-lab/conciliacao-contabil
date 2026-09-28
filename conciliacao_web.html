@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conciliação Automática</title>
+<style>
+:root{--yellow:#f4c542;--navy:#17324d;--black:#17202a;--bg:#f4f6f8;--white:#fff;--green:#18864b;--red:#c0392b;--muted:#68737d}
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--black)}
+.header{background:linear-gradient(135deg,var(--navy),#244d70);color:white;padding:24px 32px;box-shadow:0 2px 10px #0002}.header h1{margin:0 0 5px;font-size:26px}.header p{margin:0;color:#dce8f2}
+.wrap{max-width:1400px;margin:24px auto;padding:0 20px}.card{background:white;border-radius:12px;padding:20px;margin-bottom:18px;box-shadow:0 2px 10px #0000000d;border:1px solid #e5e9ed}.card h2{margin:0 0 15px;font-size:18px;color:var(--navy)}
+.mode{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.mode button{border:1px solid #ccd4db;background:#fff;border-radius:8px;padding:10px 14px;cursor:pointer}.mode button.active{background:var(--yellow);border-color:#d0a600;font-weight:700}
+.inputs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.drop{border:2px dashed #c8d0d7;border-radius:10px;padding:16px;background:#fafbfc}.drop label{display:block;font-weight:700;color:var(--navy);margin-bottom:8px}.drop input{width:100%}.hint{font-size:12px;color:var(--muted);margin-top:7px}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.primary{background:var(--navy);color:white;border:0;border-radius:8px;padding:12px 20px;font-size:15px;font-weight:700;cursor:pointer}.primary:hover{background:#214a70}.secondary{background:white;color:var(--navy);border:1px solid #bbc6cf;border-radius:8px;padding:11px 16px;cursor:pointer}.disabled{opacity:.5;pointer-events:none}.statusmsg{color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{padding:16px;border-radius:10px;background:#f8fafb;border:1px solid #e1e7eb}.stat .n{font-size:25px;font-weight:800}.stat .l{font-size:12px;color:var(--muted);margin-top:4px}.green{color:var(--green)}.red{color:var(--red)}
+.tablewrap{overflow:auto;max-height:620px;border:1px solid #dfe5ea;border-radius:8px}.search{width:100%;padding:10px;border:1px solid #ccd5dc;border-radius:8px;margin-bottom:10px}.table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}.table th{position:sticky;top:0;background:var(--navy);color:#fff;padding:9px;text-align:left;white-space:nowrap}.table td{padding:8px;border-bottom:1px solid #edf0f2;white-space:nowrap}.table tr:nth-child(even){background:#fafbfc}.ok{color:var(--green);font-weight:700}.div{color:var(--red);font-weight:700}.empty{padding:30px;text-align:center;color:var(--muted)}
+.notice{background:#fff8d9;border-left:4px solid var(--yellow);padding:12px 14px;border-radius:6px;font-size:13px;line-height:1.5}.footer{color:#7b858d;font-size:12px;text-align:center;padding:20px}.hidden{display:none!important}
+@media(max-width:900px){.inputs,.stats{grid-template-columns:1fr}.header{padding:20px}.wrap{padding:0 12px}}
+</style>
+</head>
+<body>
+<div class="header"><h1>Conciliação Automática</h1><p>EXTRATO × FINANCEIRO × DOMÍNIO — processamento local no seu computador</p></div>
+<div class="wrap">
+  <div class="card">
+    <h2>1. Carregar os dados</h2>
+    <div class="mode">
+      <button id="modeWorkbook" class="active">Uma planilha com as 3 abas</button>
+      <button id="modeSeparate">3 arquivos separados</button>
+    </div>
+    <div id="singleMode">
+      <div class="drop"><label>Planilha Excel (.xlsx ou .xlsm)</label><input id="workbookFile" type="file" accept=".xlsx,.xlsm"><div class="hint">Pode usar diretamente o arquivo “relatório eder fioravante.xlsm” que você enviou.</div></div>
+    </div>
+    <div id="separateMode" class="inputs hidden">
+      <div class="drop"><label>EXTRATO</label><input id="extratoFile" type="file" accept=".xlsx,.xlsm,.csv"></div>
+      <div class="drop"><label>FINANCEIRO</label><input id="financeiroFile" type="file" accept=".xlsx,.xlsm,.csv"></div>
+      <div class="drop"><label>DOMÍNIO</label><input id="dominioFile" type="file" accept=".xlsx,.xlsm,.csv"></div>
+    </div>
+    <div class="notice" style="margin-top:14px">A versão inicial reproduz a lógica da sua CONCILIACAO: separa as NFs do EXTRATO, soma o FINANCEIRO por <b>NF + data</b>, soma o DOMÍNIO por <b>NF</b> e calcula o STATUS pela soma do FINANCEIRO das NFs pertencentes a cada lançamento do EXTRATO.</div>
+  </div>
+  <div class="card">
+    <h2>2. Gerar relatório</h2>
+    <div class="actions"><button id="generate" class="primary">▶ GERAR CONCILIAÇÃO</button><button id="download" class="secondary disabled">⬇ BAIXAR EXCEL</button><span id="msg" class="statusmsg"></span></div>
+  </div>
+  <div id="result" class="hidden">
+    <div class="card"><h2>Resumo</h2><div class="stats"><div class="stat"><div class="n" id="sTotal">0</div><div class="l">LINHAS GERADAS</div></div><div class="stat"><div class="n green" id="sOk">0</div><div class="l">OK</div></div><div class="stat"><div class="n red" id="sDiv">0</div><div class="l">DIVERGENTES</div></div><div class="stat"><div class="n" id="sNf">0</div><div class="l">NFs ÚNICAS</div></div></div></div>
+    <div class="card"><h2>CONCILIACAO</h2><input id="search" class="search" placeholder="Filtrar por data, histórico, NF ou status..."><div class="tablewrap"><table class="table"><thead><tr><th>DATA</th><th>HISTÓRICO EXTRATO</th><th>VALOR EXTRATO</th><th>NOTA</th><th>VALOR NO FINANCEIRO (DIA)</th><th>VALOR TOTAL NF (DOMINIO)</th><th>STATUS</th></tr></thead><tbody id="tbody"></tbody></table></div></div>
+  </div>
+  <div class="footer">Os arquivos são processados no navegador. Esta primeira versão não envia os dados para um servidor.</div>
+</div>
+<script>
+// Leitor XLSX mínimo e independente: lê as planilhas XML dentro do ZIP do Excel.
+const $=id=>document.getElementById(id); let resultRows=[], lastName='Conciliacao';
+let mode='workbook';
+$('modeWorkbook').onclick=()=>{mode='workbook';$('modeWorkbook').classList.add('active');$('modeSeparate').classList.remove('active');$('singleMode').classList.remove('hidden');$('separateMode').classList.add('hidden')};
+$('modeSeparate').onclick=()=>{mode='separate';$('modeSeparate').classList.add('active');$('modeWorkbook').classList.remove('active');$('singleMode').classList.add('hidden');$('separateMode').classList.remove('hidden')};
+
+function u16(d,o){return d.getUint16(o,true)} function u32(d,o){return d.getUint32(o,true)}
+async function inflateRaw(bytes){let ds=new DecompressionStream('deflate-raw');let ab=await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();return new Uint8Array(ab)}
+async function unzip(buf){let a=new Uint8Array(buf),d=new DataView(buf),end=-1;for(let i=a.length-22;i>=0;i--){if(u32(d,i)===0x06054b50){end=i;break}}if(end<0)throw Error('Arquivo Excel inválido (ZIP não encontrado).');let n=u16(d,end+10),cd=u32(d,end+12),co=u32(d,end+16),map={};let p=co;for(let i=0;i<n;i++){if(u32(d,p)!==0x02014b50)throw Error('Estrutura ZIP inválida.');let method=u16(d,p+10),cs=u32(d,p+20),us=u32(d,p+24),nl=u16(d,p+28),el=u16(d,p+30),cl=u16(d,p+32),off=u32(d,p+42);let name=new TextDecoder().decode(a.slice(p+46,p+46+nl));let lp=off;if(u32(d,lp)!==0x04034b50)throw Error('Entrada ZIP inválida.');let lnl=u16(d,lp+26),lel=u16(d,lp+28),raw=a.slice(lp+30+lnl+lel,lp+30+lnl+lel+cs);let data=method===0?raw:await inflateRaw(raw);map[name]=data;p+=46+nl+el+cl}return map}
+const td=new TextDecoder(); function txt(bytes){return td.decode(bytes)}
+function xmlDoc(s){return new DOMParser().parseFromString(s,'application/xml')}
+function colIndex(ref){let m=ref.match(/[A-Z]+/i);if(!m)return 0;let s=m[0].toUpperCase(),n=0;for(let c of s)n=n*26+c.charCodeAt(0)-64;return n-1}
+function excelSerial(n){let base=Date.UTC(1899,11,30);return new Date(base+n*86400000)}
+function fmtDate(v){if(v instanceof Date)return `${String(v.getUTCDate()).padStart(2,'0')}/${String(v.getUTCMonth()+1).padStart(2,'0')}/${v.getUTCFullYear()}`;if(typeof v==='number'&&v>20000&&v<60000){let d=excelSerial(v);return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`}let s=String(v??'').trim();if(/^\d{4}-\d{2}-\d{2}/.test(s)){let p=s.slice(0,10).split('-');return `${p[2]}/${p[1]}/${p[0]}`}if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)){let p=s.split('/');return `${p[0].padStart(2,'0')}/${p[1].padStart(2,'0')}/${p[2]}`}return s}
+function normNota(v){if(v===null||v===undefined||v==='')return '';let s=String(v).trim();if(/^\d+(\.0+)?$/.test(s))return s.split('.')[0];return s.replace(/\s/g,'')}
+function num(v){if(typeof v==='number')return v;if(v===null||v===undefined||v==='')return 0;let s=String(v).trim().replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.');let x=Number(s);return Number.isFinite(x)?x:0}
+function getCellVal(c,shared,styles){let t=c.getAttribute('t'),v=c.querySelector('v');if(!v)return '';let raw=v.textContent;if(t==='s')return shared[Number(raw)]??'';if(t==='inlineStr'){let x=c.querySelector('is t');return x?x.textContent:''}if(t==='b')return raw==='1';let n=Number(raw);return Number.isNaN(n)?raw:n}
+async function readXlsx(file){let zip=await unzip(await file.arrayBuffer());let wb=xmlDoc(txt(zip['xl/workbook.xml']));let rel=xmlDoc(txt(zip['xl/_rels/workbook.xml.rels']));let rels={};for(let r of rel.getElementsByTagName('Relationship'))rels[r.getAttribute('Id')]=r.getAttribute('Target');let shared=[];if(zip['xl/sharedStrings.xml']){let x=xmlDoc(txt(zip['xl/sharedStrings.xml']));for(let si of x.getElementsByTagName('si'))shared.push(Array.from(si.getElementsByTagName('t')).map(e=>e.textContent).join(''))}
+let sheets=[];for(let sh of wb.getElementsByTagName('sheet')){let rid=sh.getAttribute('r:id');let target=rels[rid];if(!target)continue;let path=target.startsWith('/')?target.slice(1):('xl/'+target.replace(/^\.\//,''));path=path.replace('xl/xl/','xl/');let sx=xmlDoc(txt(zip[path]));let rows=[];for(let row of sx.getElementsByTagName('row')){let arr=[];for(let c of row.children){if(c.tagName!=='c')continue;arr[colIndex(c.getAttribute('r'))]=getCellVal(c,shared,[]) }let max=Math.max(-1,...arr.map((_,i)=>i));if(max>=0)rows.push(arr.map((x,i)=>x===undefined?'':x))}sheets.push({name:sh.getAttribute('name'),rows})}return sheets}
+function findSheet(sheets,name){return sheets.find(s=>s.name.trim().toUpperCase()===name.trim().toUpperCase())}
+function rowsToObjects(rows){if(!rows.length)return [];let headers=rows[0].map(x=>String(x??'').trim().toUpperCase());return rows.slice(1).map(r=>{let o={};headers.forEach((h,i)=>o[h]=r[i]??'');return o})}
+async function readSource(file,expected){let sheets=await readXlsx(file);let sh=findSheet(sheets,expected)||sheets[0];return rowsToObjects(sh.rows)}
+function parseNotas(v){return String(v??'').split('/').map(s=>s.trim()).filter(Boolean).map(normNota).filter(Boolean)}
+function money(v){return num(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function statusFor(sum,credit){return Math.abs(sum-credit)<=0.02?'OK':`DIVERGENTE (Soma: ${money(sum)})`}
+async function generate(){try{$('msg').textContent='Lendo arquivos...';let ext,fin,dom;
+ if(mode==='workbook'){let f=$('workbookFile').files[0];if(!f)throw Error('Selecione a planilha Excel.');let sheets=await readXlsx(f);ext=rowsToObjects(findSheet(sheets,'EXTRATO').rows);fin=rowsToObjects(findSheet(sheets,'FINANCEIRO').rows);dom=rowsToObjects(findSheet(sheets,'DOMINIO').rows);lastName=f.name.replace(/\.[^.]+$/,'')+'_CONCILIACAO.xlsx';}
+ else {let a=$('extratoFile').files[0],b=$('financeiroFile').files[0],c=$('dominioFile').files[0];if(!a||!b||!c)throw Error('Selecione os 3 arquivos.');ext=await readSource(a,'EXTRATO');fin=await readSource(b,'FINANCEIRO');dom=await readSource(c,'DOMINIO');lastName='CONCILIACAO.xlsx'}
+ $('msg').textContent='Processando...';
+ let fByKey=new Map(), dByNota=new Map();
+ for(const r of fin){let k=normNota(r['NOTA'])+'|'+fmtDate(r['DATA']);fByKey.set(k,(fByKey.get(k)||0)+num(r['VALOR PAGO']))}
+ for(const r of dom){let k=normNota(r['NOTA']);dByNota.set(k,(dByNota.get(k)||0)+num(r['VALOR NF']))}
+ resultRows=[];let unique=new Set();
+ for(const r of ext){let date=fmtDate(r['DATA']), hist=String(r['HISTORICO']??''), credit=num(r['CREDITO']), notes=parseNotas(r['NOTAS']);if(!notes.length)continue;let finVals=notes.map(n=>fByKey.get(n+'|'+date)||0);let finTotal=finVals.reduce((a,b)=>a+b,0), status=statusFor(finTotal,credit);notes.forEach((n,i)=>{unique.add(n);resultRows.push({date,hist,credit,note:n,finance:finVals[i],domain:dByNota.get(n)||0,status})})}
+ render();$('result').classList.remove('hidden');$('download').classList.remove('disabled');$('msg').textContent=`Concluído: ${resultRows.length.toLocaleString('pt-BR')} linhas.`;
+ }catch(e){console.error(e);$('msg').textContent='Erro: '+e.message;alert('Não foi possível gerar a conciliação.\n\n'+e.message)}}
+function render(){let q=$('search').value.toLowerCase();let rows=resultRows.filter(r=>Object.values(r).some(v=>String(v).toLowerCase().includes(q)));$('tbody').innerHTML=rows.slice(0,5000).map(r=>`<tr><td>${r.date}</td><td>${esc(r.hist)}</td><td>R$ ${money(r.credit)}</td><td>${esc(r.note)}</td><td>R$ ${money(r.finance)}</td><td>R$ ${money(r.domain)}</td><td class="${r.status==='OK'?'ok':'div'}">${esc(r.status)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">Nenhum resultado.</td></tr>';let ok=resultRows.filter(r=>r.status==='OK').length;let div=resultRows.length-ok;let set=new Set(resultRows.map(r=>r.note));$('sTotal').textContent=resultRows.length.toLocaleString('pt-BR');$('sOk').textContent=ok.toLocaleString('pt-BR');$('sDiv').textContent=div.toLocaleString('pt-BR');$('sNf').textContent=set.size.toLocaleString('pt-BR')}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+$('search').oninput=render;$('generate').onclick=generate;
+
+// Escrita XLSX mínima (ZIP sem compressão), suficiente para abrir no Excel/LibreOffice.
+function crc32(bytes){let c=~0;for(let b of bytes){c^=b;for(let k=0;k<8;k++)c=(c>>>1)^((c&1)?0xEDB88320:0)}return (~c)>>>0}
+function u32b(n){return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255])}function u16b(n){return new Uint8Array([n&255,(n>>>8)&255])}
+function concat(arrs){let n=arrs.reduce((s,a)=>s+a.length,0),o=new Uint8Array(n),p=0;for(let a of arrs){o.set(a,p);p+=a.length}return o}
+function zipStore(files){let parts=[],central=[],offset=0;for(let f of files){let nb=new TextEncoder().encode(f.name),data=new TextEncoder().encode(f.data),crc=crc32(data);let local=concat([new Uint8Array([80,75,3,4]),u16b(20),u16b(0),u16b(0),u16b(0),u16b(0),u32b(crc),u32b(data.length),u32b(data.length),u16b(nb.length),u16b(0),nb,data]);parts.push(local);let cent=concat([new Uint8Array([80,75,1,2]),u16b(20),u16b(20),u16b(0),u16b(0),u16b(0),u16b(0),u32b(crc),u32b(data.length),u32b(data.length),u16b(nb.length),u16b(0),u16b(0),u16b(0),u16b(0),u32b(0),u32b(offset),nb]);central.push(cent);offset+=local.length}let cd=concat(central),body=concat(parts);let eoc=concat([new Uint8Array([80,75,5,6]),u16b(0),u16b(0),u16b(files.length),u16b(files.length),u32b(cd.length),u32b(body.length),u16b(0)]);return concat([body,cd,eoc])}
+function xmlEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
+function sheetXml(rows){let out=['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'];rows.forEach((r,ri)=>{out.push(`<row r="${ri+1}">`);r.forEach((v,ci)=>{if(v===null||v===undefined||v==='')return;let ref=colName(ci)+(ri+1),isText=typeof v==='string'&&!/^[-+]?\d+(?:[.,]\d+)?$/.test(v);if(typeof v==='number')out.push(`<c r="${ref}"><v>${v}</v></c>`);else out.push(`<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`)});out.push('</row>')});out.push('</sheetData><autoFilter ref="A1:G'+rows.length+'"/><sheetViews><sheetView workbookViewId="0"/></sheetViews></worksheet>');return out.join('')}
+function colName(n){let s='';n++;while(n){let r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26)}return s}
+function workbookXml(){return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="CONCILIACAO" sheetId="1" r:id="rId1"/></sheets></workbook>'}
+function relXml(){return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'}
+function wbRelXml(){return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'}
+function typesXml(){return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'}
+
+function downloadXlsx(){if(!resultRows.length)return;let rows=[['DATA','HISTORICO EXTRATO','VALOR EXTRATO','NOTA','VALOR NO FINANCEIRO (DIA)','VALOR TOTAL NF (DOMINIO)','STATUS'],...resultRows.map(r=>[r.date,r.hist,r.credit,r.note,r.finance,r.domain,r.status])];let data=zipStore([{name:'[Content_Types].xml',data:typesXml()},{name:'_rels/.rels',data:relXml()},{name:'xl/workbook.xml',data:workbookXml()},{name:'xl/_rels/workbook.xml.rels',data:wbRelXml()},{name:'xl/worksheets/sheet1.xml',data:sheetXml(rows)}]);let blob=new Blob([data],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=lastName||'CONCILIACAO.xlsx';a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},1500);$('msg').textContent='Excel gerado. Se o download não iniciar, verifique a barra de downloads do Chrome.'} 
+</script>
+</body></html>
